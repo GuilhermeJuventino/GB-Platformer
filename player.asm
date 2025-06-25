@@ -32,6 +32,8 @@ InitPlayer::
     ld [wPlayerMaxJumpSpeed], a
     ld a, 4
     ld [wPlayerGravity], a
+    ld a, 1
+    ld [wPlayerDirection], a
 
     ld a, [PLAYER_IDLE]
     ld [wCurrentPlayerState], a
@@ -48,19 +50,18 @@ LoadPlayerSprite::
 
 
 UpdatePlayer::
+    call MovePlayer
     ld a, [wCurrentPlayerState]
     ;cp a, PLAYER_IDLE
     ;ret z
 
-    call MovePlayer
-
-    cp a, PLAYER_WALKING
+    cp a, $01
     jp z, UpdateWalkingState
 
-    cp a, PLAYER_JUMPING
+    cp a, $02
     jp z, UpdateJumpingState
 
-    cp a, PLAYER_FALLING
+    cp a, $03
     jp z, UpdateFallingState
 
 
@@ -99,16 +100,16 @@ AccelerateLeft:
     ld a, [wPlayerSpeed]
     ld hl, wPlayerAcceleration
     
-    sub a, [hl]
+    add a, [hl]
     ld [wPlayerSpeed], a
 
-    ld a, [PLAYER_WALKING]
+    ld a, $01
     ld [wCurrentPlayerState], a
+    
+    ld a, 0
+    ld [wPlayerDirection], a
 
-    ;ld a, [wPlayerSpeed]
-    ;ld [_OAMRAM + 1], a
-
-    jp EndMovePlayer
+    jp CheckMaxVelocity
 
 CheckKeyRight:
     ld a, [wCurKeys]
@@ -122,17 +123,30 @@ AccelerateRight:
     add a, [hl]
     ld [wPlayerSpeed], a
 
-    ld a, [PLAYER_WALKING]
+    ld a, $01
     ld [wCurrentPlayerState], a
 
-    ;ld a, [wPlayerSpeed]
-    ;ld [_OAMRAM + 1], a
+    ld a, 1
+    ld [wPlayerDirection], a
 
+CheckMaxVelocity:
+    ld a, [wPlayerSpeed]
+    ld hl, wPlayerMaxSpeed
+    cp a, [hl]
 
-    ;jp EndMovePlayer
+    jp z, LimitVelocity
+    jp c, EndMovePlayer
+    jp LimitVelocity
+
+LimitVelocity:
+    ld hl, wPlayerMaxSpeed
+    ld a, [hl]
+    ld [wPlayerSpeed], a
+
+    jp EndMovePlayer
 
 PlayerIdle:
-    ld a, [PLAYER_IDLE]
+    ld a, $00
     ld [wCurrentPlayerState], a
 
     jp EndMovePlayer
@@ -144,27 +158,46 @@ EndMovePlayer:
 UpdatePlayerPosition:
     ld a, [wPlayerSpeed]
     cp a, 0
-    jp c, .updateLeft ; Speed less than zero
-
-    cp a, 0
-    jp nc, .updateRight ; Speed greater than zero
-
-    cp a, 0
-    jp z, .updateIdle
+    jp z, .updateIdle ; Skip to updateIdle if speed == 0
+    
+    ld a, [wPlayerDirection]
+    cp a, 0 ; Player is moving left
+    jp z, .updateLeft 
+    
+    cp a, 1 ; Player is moving right
+    jp z, .updateRight
 
 .updateLeft:
     ; (TODO) Flip sprite left
 
+    
+    ; Decrease sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
+    ld b, a
+    ld a, [_OAMRAM + 1]
+    sub a, b
     ld [_OAMRAM + 1], a
+
+    ld a, [_OAMRAM + 5]
+    sub a, b
+    ld [_OAMRAM + 5], a
 
     jp EndUpdatePlayerPosition
 
 .updateRight:
     ; (TODO) Flip sprite right
     
+    
+    ; Increase sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
+    ld b, a
+    ld a, [_OAMRAM + 1]
+    add a, b
     ld [_OAMRAM + 1], a
+
+    ld a, [_OAMRAM + 5]
+    add a, b
+    ld [_OAMRAM + 5], a
 
     jp EndUpdatePlayerPosition
 
@@ -197,11 +230,12 @@ wPlayerMaxSpeed: db
 wPlayerJumpSpeed: db
 wPlayerMaxJumpSpeed: db
 wPlayerGravity: db
+wPlayerDirection: db
 
 
 SECTION "Player Constants", WRAM0
 
 DEF PLAYER_IDLE EQU $00
 DEF PLAYER_WALKING EQU $01
-DEF PLAYER_JUMPING EQU $03
-DEF PLAYER_FALLING EQU $04
+DEF PLAYER_JUMPING EQU $02
+DEF PLAYER_FALLING EQU $03

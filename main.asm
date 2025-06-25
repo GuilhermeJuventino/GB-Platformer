@@ -85,6 +85,7 @@ Main:
     call WaitVBlank
 
     call UpdateKeys
+    call UpdatePlayer
     
     ld a, [wFrameCounter]
     inc a
@@ -95,7 +96,7 @@ Main:
     ; Set frame counter back to zero
     ;ld a, 0
     ;ld [wFrameCounter], a
-    call UpdatePlayer
+    ;call UpdatePlayer
 
     jp Main
 
