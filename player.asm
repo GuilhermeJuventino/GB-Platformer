@@ -40,6 +40,7 @@ InitPlayer::
 
     ret
 
+
 LoadPlayerSprite:: 
     ld de, playerWalking
     ld hl, $8000
@@ -73,15 +74,18 @@ UpdateWalkingState:
 
     jp UpdateEnd
 
+
 UpdateJumpingState:
     call UpdatePlayerPosition
 
     jp UpdateEnd
 
+
 UpdateFallingState:
     call UpdatePlayerPosition
 
     jp UpdateEnd
+
 
 UpdateEnd:
     
@@ -96,6 +100,8 @@ CheckKeyLeft:
     and a, PADF_LEFT
 
     jp z, CheckKeyRight
+
+
 AccelerateLeft:
     ld a, [wPlayerSpeed]
     ld hl, wPlayerAcceleration
@@ -108,14 +114,18 @@ AccelerateLeft:
     
     ld a, 0
     ld [wPlayerDirection], a
+    call UpdatePlayerAnimations
 
     jp CheckMaxVelocity
+
 
 CheckKeyRight:
     ld a, [wCurKeys]
     and a, PADF_RIGHT
 
     jp z, PlayerIdle
+
+
 AccelerateRight:
     ld a, [wPlayerSpeed]
     ld hl, wPlayerAcceleration
@@ -128,6 +138,8 @@ AccelerateRight:
 
     ld a, 1
     ld [wPlayerDirection], a
+    call UpdatePlayerAnimations
+
 
 CheckMaxVelocity:
     ld a, [wPlayerSpeed]
@@ -138,6 +150,7 @@ CheckMaxVelocity:
     jp c, EndMovePlayer
     jp LimitVelocity
 
+
 LimitVelocity:
     ld hl, wPlayerMaxSpeed
     ld a, [hl]
@@ -145,11 +158,13 @@ LimitVelocity:
 
     jp EndMovePlayer
 
+
 PlayerIdle:
     ld a, $00
     ld [wCurrentPlayerState], a
 
     jp EndMovePlayer
+
 
 EndMovePlayer:
     ret
@@ -168,9 +183,6 @@ UpdatePlayerPosition:
     jp z, .updateRight
 
 .updateLeft:
-    ; (TODO) Flip sprite left
-
-    
     ; Decrease sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
     ld b, a
@@ -185,9 +197,6 @@ UpdatePlayerPosition:
     jp EndUpdatePlayerPosition
 
 .updateRight:
-    ; (TODO) Flip sprite right
-    
-    
     ; Increase sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
     ld b, a
@@ -211,6 +220,89 @@ EndUpdatePlayerPosition:
 
 
     ret
+
+
+UpdatePlayerAnimations:
+    call FlipPlayerSprite
+
+
+EndUpddatePlayerAnimations:
+
+
+    ret
+
+FlipPlayerSprite: 
+    ld a, [wPlayerDirection]
+    cp a, 0
+    jp z, .flipLeft
+
+    cp a, 1
+    jp z, .flipRight
+
+
+.flipLeft:
+    ld a, [_OAMRAM + 3]
+    ld b, %00100000
+    
+    ; Checking if player sprite is already flpped left
+    ; if so, skip the rest of the code
+    and a, b
+    jp nz, EndFlipPlayerSprite
+
+
+    ; Flipping both metasprite tiles horizontally
+    ld a, [_OAMRAM + 3]
+    xor a, b
+    ld [_OAMRAM + 3], a
+
+    ld a, [_OAMRAM + 7]
+    xor a, b
+    ld [_OAMRAM + 7], a
+
+    ; Swapping metasprite tile indexes
+    ld a, 2
+    ld [_OAMRAM + 2], a
+
+    ld a, 0
+    ld [_OAMRAM + 6], a 
+
+    jp EndFlipPlayerSprite
+
+
+.flipRight:
+    ld a, [_OAMRAM + 3]
+    ld b, %00100000
+
+    ; Checking if player sprite is already flpped right
+    ; if so, skip the rest of the code
+    and a, b
+    jp z, EndFlipPlayerSprite
+
+    ; Swapping metasprite tile indexes
+    ld a, 0
+    ld [_OAMRAM + 2], a
+
+    ld a, 2
+    ld [_OAMRAM + 6], a
+    
+    ; Flipping both metasprite tiles horizontally
+    ld a, [_OAMRAM + 3]
+    ld b, %00100000
+    xor a, b
+    ld [_OAMRAM + 3], a
+
+    ld a, [_OAMRAM + 7]
+    xor a, b
+    ld [_OAMRAM + 7], a
+
+    jp EndFlipPlayerSprite
+
+
+EndFlipPlayerSprite:
+
+
+    ret
+
 
 
 SECTION "Player Graphics", ROM0

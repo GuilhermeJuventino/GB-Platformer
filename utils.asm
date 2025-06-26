@@ -100,3 +100,8 @@ GetTileByPixel::
     add hl, bc
 
     ret
+
+
+SECTION "Input Variables", WRAM0
+wCurKeys: db
+wNewKeys: db
