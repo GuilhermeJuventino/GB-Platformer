@@ -310,6 +310,9 @@ SECTION "Player Graphics", ROM0
 playerWalking:
     Walking00: INCBIN "assets/player/Player0-0.2bpp"
     Walking01: INCBIN "assets/player/Player0-1.2bpp"
+
+    Walking10: INCBIN "assets/player/Player1-0.2bpp"
+    Walking11: INCBIN "assets/player/Player1-1.2bpp"
 playerWalkingEnd:
 
 
