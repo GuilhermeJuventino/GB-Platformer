@@ -34,6 +34,8 @@ InitPlayer::
     ld [wPlayerGravity], a
     ld a, 1
     ld [wPlayerDirection], a
+    ld a, 0
+    ld [wCurrentAnimationFrame], a
 
     ld a, [PLAYER_IDLE]
     ld [wCurrentPlayerState], a
@@ -53,8 +55,6 @@ LoadPlayerSprite::
 UpdatePlayer::
     call MovePlayer
     ld a, [wCurrentPlayerState]
-    ;cp a, PLAYER_IDLE
-    ;ret z
 
     cp a, $01
     jp z, UpdateWalkingState
@@ -71,18 +71,21 @@ UpdatePlayer::
 
 UpdateWalkingState:
     call UpdatePlayerPosition
+    call UpdatePlayerAnimations
 
     jp UpdateEnd
 
 
 UpdateJumpingState:
     call UpdatePlayerPosition
+    call UpdatePlayerAnimations
 
     jp UpdateEnd
 
 
 UpdateFallingState:
     call UpdatePlayerPosition
+    call UpdatePlayerAnimations
 
     jp UpdateEnd
 
@@ -114,7 +117,6 @@ AccelerateLeft:
     
     ld a, 0
     ld [wPlayerDirection], a
-    call UpdatePlayerAnimations
 
     jp CheckMaxVelocity
 
@@ -138,7 +140,6 @@ AccelerateRight:
 
     ld a, 1
     ld [wPlayerDirection], a
-    call UpdatePlayerAnimations
 
 
 CheckMaxVelocity:
@@ -224,9 +225,10 @@ EndUpdatePlayerPosition:
 
 UpdatePlayerAnimations:
     call FlipPlayerSprite
+    call WalkingAnimation
 
 
-EndUpddatePlayerAnimations:
+EndUpdatePlayerAnimations:
 
 
     ret
@@ -260,10 +262,13 @@ FlipPlayerSprite:
     ld [_OAMRAM + 7], a
 
     ; Swapping metasprite tile indexes
-    ld a, 2
+    ld a, [wCurrentAnimationFrame]
+    inc a
+    inc a
     ld [_OAMRAM + 2], a
-
-    ld a, 0
+    
+    dec a
+    dec a
     ld [_OAMRAM + 6], a 
 
     jp EndFlipPlayerSprite
@@ -278,13 +283,6 @@ FlipPlayerSprite:
     and a, b
     jp z, EndFlipPlayerSprite
 
-    ; Swapping metasprite tile indexes
-    ld a, 0
-    ld [_OAMRAM + 2], a
-
-    ld a, 2
-    ld [_OAMRAM + 6], a
-    
     ; Flipping both metasprite tiles horizontally
     ld a, [_OAMRAM + 3]
     ld b, %00100000
@@ -295,6 +293,14 @@ FlipPlayerSprite:
     xor a, b
     ld [_OAMRAM + 7], a
 
+    ; Swapping metasprite tile indexes
+    ld a, [wCurrentAnimationFrame]
+    ld [_OAMRAM + 2], a
+
+    inc a
+    inc a
+    ld [_OAMRAM + 6], a
+    
     jp EndFlipPlayerSprite
 
 
@@ -303,6 +309,73 @@ EndFlipPlayerSprite:
 
     ret
 
+
+WalkingAnimation:
+    ; Safety check to prevent animation frame from going over animation tile indexes
+    ld a, [wCurrentAnimationFrame]
+    cp a, 8
+    jp z, .increasAnimationFrameCounter
+    
+    ; Checking if the player is currently flipped horizontally
+    ; and branching code accordingly
+    ld a, [_OAMRAM + 3]
+    ld b, %00100000
+    and a, b
+    jp nz, .walkingLeft
+    jp z, .walkingRight
+
+
+.walkingLeft:
+    ld a, [wCurrentAnimationFrame]
+    inc a
+    inc a
+    ld [_OAMRAM + 2], a
+
+    dec a
+    dec a
+    ld [_OAMRAM + 6], a
+
+    jp .increasAnimationFrameCounter
+
+
+.walkingRight:
+    ld a, [wCurrentAnimationFrame]
+    ld [_OAMRAM + 2], a
+
+    inc a
+    inc a
+    ld [_OAMRAM + 6], a
+
+    jp .increasAnimationFrameCounter
+
+
+.resetAnimation:
+    ld a, 0
+    ld [wCurrentAnimationFrame], a
+
+    jp WalkingAnimationEnd
+
+
+.increasAnimationFrameCounter:
+    ; Multiplying animation counter by 4
+    ld a, [wCurrentAnimationFrame]
+    inc a
+    inc a
+    inc a
+    inc a
+
+    ; If A falls goes over the tile indexes for animation frames
+    ; reset the animation frame counter
+    cp a, 8
+    jp z, .resetAnimation
+
+    ld [wCurrentAnimationFrame], a
+
+
+WalkingAnimationEnd:
+
+
+    ret
 
 
 SECTION "Player Graphics", ROM0
@@ -326,6 +399,7 @@ wPlayerJumpSpeed: db
 wPlayerMaxJumpSpeed: db
 wPlayerGravity: db
 wPlayerDirection: db
+wCurrentAnimationFrame: db
 
 
 SECTION "Player Constants", WRAM0
