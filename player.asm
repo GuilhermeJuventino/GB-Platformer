@@ -26,11 +26,11 @@ InitPlayer::
     ld [wPlayerMaxSpeed], a
     ld a, 1
     ld [wPlayerAcceleration], a
-    ld a, 1
+    ld a, 0
     ld [wPlayerJumpSpeed], a
-    ld a, 6
+    ld a, 3
     ld [wPlayerMaxJumpSpeed], a
-    ld a, 4
+    ld a, 1
     ld [wPlayerGravity], a
     ld a, 1
     ld [wPlayerDirection], a
@@ -90,8 +90,9 @@ UpdateFallingState:
     jp UpdateEnd
 
 
-UpdateEnd:
-    
+UpdateEnd: 
+    call PlayerJump
+    call UpdatePlayerGravity
 
     ret
 
@@ -218,6 +219,60 @@ UpdatePlayerPosition:
 
 
 EndUpdatePlayerPosition:
+
+
+    ret
+
+
+PlayerJump:
+    ld a, [wCurKeys]
+    and a, PADF_A
+    jp z, PlayerNotJumping
+
+    ld a, [wPlayerMaxJumpSpeed]
+    ld [wPlayerJumpSpeed], a
+    
+    jp EndPlayerJump
+
+
+PlayerNotJumping:
+    ld a, 0
+    ld [wPlayerJumpSpeed], a
+
+
+EndPlayerJump:
+
+
+    ret
+
+
+UpdatePlayerGravity:
+    ; Apply jump velocity 
+    ld a, [wPlayerJumpSpeed]
+    ld b, a
+    ld a, [_OAMRAM]
+
+    sub a, b
+    ld [_OAMRAM], a
+
+    ld a, [_OAMRAM + 4]
+    sub a, b
+    ld [_OAMRAM + 4], a
+
+    ; Apply gravity
+    ld a, [wPlayerGravity]
+    ld b, a
+    ld a, [_OAMRAM]
+
+    add a, b
+    ld [_OAMRAM], a
+
+    ld a, [_OAMRAM + 4]
+    add a, b
+    ld [_OAMRAM + 4], a
+
+
+EndUpdatePlayerGravity:
 
 
     ret
