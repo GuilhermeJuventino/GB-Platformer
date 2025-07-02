@@ -93,6 +93,7 @@ UpdateFallingState:
 UpdateEnd: 
     call PlayerJump
     call UpdatePlayerGravity
+    call CheckFloorCollision
 
     ret
 
@@ -428,6 +429,53 @@ WalkingAnimation:
 
 
 WalkingAnimationEnd:
+
+
+    ret
+
+
+CheckFloorCollision:
+    ld a, [_OAMRAM]
+    sub a, 16 - 1
+    ld c, a
+    ld a, [_OAMRAM + 1]
+    sub a, 8
+    call GetTileByPixel
+
+    ld a, [hl]
+    call IsFloorTile
+
+    jp z, CollideWithFloor
+
+
+    ld a, [_OAMRAM + 4]
+    sub a, 16 - 1
+    ld c, a
+    ld a, [_OAMRAM + 5]
+    sub a, 8
+    call GetTileByPixel
+
+    ld a, [hl]
+    call IsFloorTile
+
+    jp z, CollideWithFloor
+
+    jp CheckFloorCollisionEnd
+
+
+CollideWithFloor:
+    ld a, [_OAMRAM]
+    sub a, 16
+    ld [_OAMRAM], a
+
+    ld a, [_OAMRAM + 4]
+    sub a, 16
+    ld [_OAMRAM + 4], a
+
+    jp CheckFloorCollisionEnd
+
+
+CheckFloorCollisionEnd:
 
 
     ret

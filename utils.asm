@@ -101,6 +101,22 @@ GetTileByPixel::
 
     ret
 
+; param a: Tile ID
+; return z: set if it's a floor tile
+IsFloorTile::
+    cp a, $01
+    ret z
+    cp a, $02
+    ret z
+    cp a, $03
+    ret z
+    cp a, $04
+    ret z
+    cp a, $05
+    ret z
+
+    ret
+
 
 SECTION "Input Variables", WRAM0
 wCurKeys: db
