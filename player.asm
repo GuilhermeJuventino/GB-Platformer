@@ -28,9 +28,9 @@ InitPlayer::
     ld [wPlayerAcceleration], a
     ld a, 0
     ld [wPlayerJumpSpeed], a
-    ld a, 3
+    ld a, 8
     ld [wPlayerMaxJumpSpeed], a
-    ld a, 1
+    ld a, 4
     ld [wPlayerGravity], a
     ld a, 1
     ld [wPlayerDirection], a
@@ -190,6 +190,11 @@ UpdatePlayerPosition:
     ld a, [wPlayerSpeed]
     ld b, a
     ld a, [_OAMRAM + 1]
+
+    ; Preventing player from moving outside the left boundary of the screen
+    cp a, 7
+    jp z, EndUpdatePlayerPosition
+
     sub a, b
     ld [_OAMRAM + 1], a
 
@@ -203,6 +208,13 @@ UpdatePlayerPosition:
     ; Increase sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
     ld b, a
+    
+    ; Preventing player from moving outside the right boundary of the screen
+    ld a, [_OAMRAM + 5]
+    dec a
+    cp a, 160
+    jp nc, EndUpdatePlayerPosition
+
     ld a, [_OAMRAM + 1]
     add a, b
     ld [_OAMRAM + 1], a
@@ -435,11 +447,12 @@ WalkingAnimationEnd:
 
 
 CheckFloorCollision:
+    ; Checking bottom-left corner of sprite
     ld a, [_OAMRAM]
-    sub a, 16 - 1
+    sub a, 6
     ld c, a
     ld a, [_OAMRAM + 1]
-    sub a, 8
+    ld b, a
     call GetTileByPixel
 
     ld a, [hl]
@@ -447,12 +460,13 @@ CheckFloorCollision:
 
     jp z, CollideWithFloor
 
-
+    ; Checking bottom-right corner of sprite
     ld a, [_OAMRAM + 4]
-    sub a, 16 - 1
+    sub a, 6
     ld c, a
     ld a, [_OAMRAM + 5]
     sub a, 8
+    ld b, a
     call GetTileByPixel
 
     ld a, [hl]
@@ -465,17 +479,28 @@ CheckFloorCollision:
 
 CollideWithFloor:
     ld a, [_OAMRAM]
-    sub a, 16
+    sub a, 4
     ld [_OAMRAM], a
 
     ld a, [_OAMRAM + 4]
-    sub a, 16
+    sub a, 4
     ld [_OAMRAM + 4], a
 
     jp CheckFloorCollisionEnd
 
 
 CheckFloorCollisionEnd:
+
+
+    ret
+
+
+CollideWithScreenBoundary:
+    ld a, [_OAMRAM + 1]
+    sub a, 1
+
+
+CollideWithScreenBoundaryEnd:
 
 
     ret
