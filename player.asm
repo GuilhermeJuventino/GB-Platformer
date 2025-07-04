@@ -37,7 +37,7 @@ InitPlayer::
     ld a, 0
     ld [wCurrentAnimationFrame], a
 
-    ld a, [PLAYER_IDLE]
+    ld a, 0
     ld [wCurrentPlayerState], a
 
     ret
@@ -55,35 +55,38 @@ LoadPlayerSprite::
 UpdatePlayer::
     call MovePlayer
     ld a, [wCurrentPlayerState]
+    
+    cp a, PLAYER_IDLE
+    jp z, .updateIdleState
 
-    cp a, $01
-    jp z, UpdateWalkingState
+    cp a, PLAYER_WALKING
+    jp z, .updateWalkingState
 
-    cp a, $02
-    jp z, UpdateJumpingState
-
-    cp a, $03
-    jp z, UpdateFallingState
-
+    cp a, PLAYER_JUMPING
+    jp z, .updateJumpingState
 
     jp UpdateEnd
 
+.updateIdleState:
+    call UpdatePlayerAnimations
 
-UpdateWalkingState:
+    jp UpdateEnd
+
+.updateWalkingState:
     call UpdatePlayerPosition
     call UpdatePlayerAnimations
 
     jp UpdateEnd
 
 
-UpdateJumpingState:
+.updateJumpingState:
     call UpdatePlayerPosition
     call UpdatePlayerAnimations
 
     jp UpdateEnd
 
 
-UpdateFallingState:
+.updateFallingState:
     call UpdatePlayerPosition
     call UpdatePlayerAnimations
 
@@ -114,7 +117,7 @@ AccelerateLeft:
     add a, [hl]
     ld [wPlayerSpeed], a
 
-    ld a, $01
+    ld a, 1
     ld [wCurrentPlayerState], a
     
     ld a, 0
@@ -137,7 +140,7 @@ AccelerateRight:
     add a, [hl]
     ld [wPlayerSpeed], a
 
-    ld a, $01
+    ld a, 1
     ld [wCurrentPlayerState], a
 
     ld a, 1
@@ -163,7 +166,7 @@ LimitVelocity:
 
 
 PlayerIdle:
-    ld a, $00
+    ld a, 0
     ld [wCurrentPlayerState], a
 
     jp EndMovePlayer
@@ -175,8 +178,8 @@ EndMovePlayer:
 
 UpdatePlayerPosition:
     ld a, [wPlayerSpeed]
-    cp a, 0
-    jp z, .updateIdle ; Skip to updateIdle if speed == 0
+    ;cp a, 0
+    ;jp z, .updateIdle ; Skip to updateIdle if speed == 0
     
     ld a, [wPlayerDirection]
     cp a, 0 ; Player is moving left
@@ -223,13 +226,6 @@ UpdatePlayerPosition:
     add a, b
     ld [_OAMRAM + 5], a
 
-    jp EndUpdatePlayerPosition
-
-.updateIdle:
-    ; (TODO) Set sprite to Idle and animate it
-
-    jp EndUpdatePlayerPosition
-
 
 EndUpdatePlayerPosition:
 
@@ -244,6 +240,9 @@ PlayerJump:
 
     ld a, [wPlayerMaxJumpSpeed]
     ld [wPlayerJumpSpeed], a
+
+    ld a, 2
+    ld [wCurrentPlayerState], a
     
     jp EndPlayerJump
 
@@ -260,7 +259,7 @@ EndPlayerJump:
 
 
 UpdatePlayerGravity:
-    ; Apply jump velocity 
+    ; Apply jump velocity
     ld a, [wPlayerJumpSpeed]
     ld b, a
     ld a, [_OAMRAM]
@@ -293,7 +292,16 @@ EndUpdatePlayerGravity:
 
 UpdatePlayerAnimations:
     call FlipPlayerSprite
-    call WalkingAnimation
+
+    ld a, [wCurrentPlayerState]
+    cp PLAYER_IDLE
+    call z, IdleAnimation
+
+    cp PLAYER_WALKING
+    call z, WalkingAnimation
+
+    cp PLAYER_JUMPING
+    call z, JumpingAnimation
 
 
 EndUpdatePlayerAnimations:
@@ -301,23 +309,126 @@ EndUpdatePlayerAnimations:
 
     ret
 
+
+
 FlipPlayerSprite: 
     ld a, [wPlayerDirection]
     cp a, 0
-    jp z, .flipLeft
+    call z, FacingLeft
 
     cp a, 1
-    jp z, .flipRight
+    call z, FacingRight
 
 
-.flipLeft:
+EndFlipPlayerSprite:
+
+
+    ret
+
+
+IdleAnimation:
+    ld a, $00
+    ld [wCurrentAnimationFrame], a
+
+
+IdleAnimationEnd:
+
+
+    ret
+
+
+JumpingAnimation:
+    ld a, $0C
+    ld [wCurrentAnimationFrame], a
+
+    ld a, [_OAMRAM + 3]
+    ld b, %00100000
+    and a, b
+    call nz, FacingLeft
+    call z, FacingRight
+
+
+JumpingAnimationEnd:
+
+
+    ret
+
+
+WalkingAnimation:
+    ; Safety check to prevent animation frame from going over animation tile indexes
+    ld a, [wCurrentAnimationFrame]
+    call CheckWalkingFrames
+
+    ld a, [wCurrentAnimationFrame]
+    cp a, $0C
+    call c, IncreasAnimationFrameCounter
+    
+    ; Checking if the player is currently flipped horizontally
+    ; and branching code accordingly
+    ld a, [_OAMRAM + 3]
+    ld b, %00100000
+    and a, b
+    call nz, FacingLeft
+    call z, FacingRight
+
+
+WalkingAnimationEnd:
+
+
+    ret
+
+
+CheckWalkingFrames:
+    cp a, $04
+    jp c, EndCheckWalkingFrames
+
+    cp a, $09
+    jp nc, EndCheckWalkingFrames
+
+    ld a, $04
+    ld [wCurrentAnimationFrame], a
+
+
+EndCheckWalkingFrames:
+
+
+    ret
+
+
+IncreasAnimationFrameCounter:
+    ; Multiplying animation counter by 4
+    ld a, [wCurrentAnimationFrame]
+    inc a
+    inc a
+    inc a
+    inc a
+
+    ; If A falls goes over the tile indexes for animation frames
+    ; reset the animation frame counter
+    cp a, $0C
+    jp nc, IncreasAnimationFrameCounterEnd
+    
+    ld [wCurrentAnimationFrame], a
+
+
+IncreasAnimationFrameCounterEnd:
+    ld a, [wCurrentAnimationFrame]
+    cp $0C
+    call nz, ResetWalkingAnimation
+    
+
+    ret
+
+
+FacingLeft:
+    ; Flipping both metasprite tiles horizontally
     ld a, [_OAMRAM + 3]
     ld b, %00100000
     
     ; Checking if player sprite is already flpped left
     ; if so, skip the rest of the code
     and a, b
-    jp nz, EndFlipPlayerSprite
+    ret nz
 
 
     ; Flipping both metasprite tiles horizontally
@@ -339,17 +450,19 @@ FlipPlayerSprite:
     dec a
     ld [_OAMRAM + 6], a 
 
-    jp EndFlipPlayerSprite
+    ;call IncreasAnimationFrameCounter
+
+    ret   
 
 
-.flipRight:
+FacingRight:
     ld a, [_OAMRAM + 3]
     ld b, %00100000
 
     ; Checking if player sprite is already flpped right
     ; if so, skip the rest of the code
     and a, b
-    jp z, EndFlipPlayerSprite
+    ret z
 
     ; Flipping both metasprite tiles horizontally
     ld a, [_OAMRAM + 3]
@@ -368,79 +481,15 @@ FlipPlayerSprite:
     inc a
     inc a
     ld [_OAMRAM + 6], a
-    
-    jp EndFlipPlayerSprite
 
-
-EndFlipPlayerSprite:
-
+    ;call IncreasAnimationFrameCounter
 
     ret
 
 
-WalkingAnimation:
-    ; Safety check to prevent animation frame from going over animation tile indexes
-    ld a, [wCurrentAnimationFrame]
-    cp a, 8
-    jp z, .increasAnimationFrameCounter
-    
-    ; Checking if the player is currently flipped horizontally
-    ; and branching code accordingly
-    ld a, [_OAMRAM + 3]
-    ld b, %00100000
-    and a, b
-    jp nz, .walkingLeft
-    jp z, .walkingRight
-
-
-.walkingLeft:
-    ld a, [wCurrentAnimationFrame]
-    inc a
-    inc a
-    ld [_OAMRAM + 2], a
-
-    dec a
-    dec a
-    ld [_OAMRAM + 6], a
-
-    jp .increasAnimationFrameCounter
-
-
-.walkingRight:
-    ld a, [wCurrentAnimationFrame]
-    ld [_OAMRAM + 2], a
-
-    inc a
-    inc a
-    ld [_OAMRAM + 6], a
-
-    jp .increasAnimationFrameCounter
-
-
-.resetAnimation:
-    ld a, 0
+ResetWalkingAnimation:
+    ld a, 4
     ld [wCurrentAnimationFrame], a
-
-    jp WalkingAnimationEnd
-
-
-.increasAnimationFrameCounter:
-    ; Multiplying animation counter by 4
-    ld a, [wCurrentAnimationFrame]
-    inc a
-    inc a
-    inc a
-    inc a
-
-    ; If A falls goes over the tile indexes for animation frames
-    ; reset the animation frame counter
-    cp a, 8
-    jp z, .resetAnimation
-
-    ld [wCurrentAnimationFrame], a
-
-
-WalkingAnimationEnd:
 
 
     ret
@@ -509,11 +558,17 @@ CollideWithScreenBoundaryEnd:
 SECTION "Player Graphics", ROM0
 
 playerWalking:
-    Walking00: INCBIN "assets/player/Player0-0.2bpp"
-    Walking01: INCBIN "assets/player/Player0-1.2bpp"
+    Idle00: INCBIN "assets/player/Idle/PlayerIdle0-0.2bpp"
+    Idle01: INCBIN "assets/player/Idle/PlayerIdle0-1.2bpp"
 
-    Walking10: INCBIN "assets/player/Player1-0.2bpp"
-    Walking11: INCBIN "assets/player/Player1-1.2bpp"
+    Walking00: INCBIN "assets/player/Walk/PlayerWalking0-0.2bpp"
+    Walking01: INCBIN "assets/player/Walk/PlayerWalking0-1.2bpp"
+
+    Walking10: INCBIN "assets/player/Walk/PlayerWalking1-0.2bpp"
+    Walking11: INCBIN "assets/player/Walk/PlayerWalking1-1.2bpp"
+
+    Jumping00: INCBIN "assets/player/Jump/PlayerJump0-0.2bpp"
+    Jumping01: INCBIN "assets/player/Jump/PlayerJump0-1.2bpp"
 playerWalkingEnd:
 
 

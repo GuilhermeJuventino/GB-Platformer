@@ -68,7 +68,7 @@ EntryPoint:
     
     ; I'm not sure if I NEED to do the same for the object layer as well, since I haven't added any sprite yet
     ; But I'm doing it just in case
-    ld a, %11100100
+    ld a, %10010011
     ld [rOBP0], a
 
     ; Enabling "tall sprites" (8x16)
