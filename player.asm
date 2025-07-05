@@ -41,6 +41,9 @@ InitPlayer::
     ld [wCurrentPlayerState], a
     ld [wMetaSpriteFlipped], a
 
+    ld a, 8
+    ld [wWalkingAnimationDelay], a
+
     ret
 
 
@@ -387,9 +390,19 @@ WalkingAnimation:
     inc a
 
     ld [_OAMRAM + 6], a
-
-    call IncreasAnimationFrameCounter
     
+    ld a, [wWalkingAnimationDelay]
+    cp 0
+    jp nz, DelayWalkingAnimationEnd
+
+    DelayWalkingAnimation:
+        call IncreasAnimationFrameCounter
+        ld a, 8
+        ld [wWalkingAnimationDelay], a
+    DelayWalkingAnimationEnd:
+    
+    dec a
+    ld [wWalkingAnimationDelay], a
 
 WalkingAnimationEnd:
 
@@ -651,6 +664,7 @@ wPlayerGravity: db
 wPlayerDirection: db
 wCurrentAnimationFrame: db
 wMetaSpriteFlipped: db
+wWalkingAnimationDelay: db
 
 
 SECTION "Player Constants", WRAM0
