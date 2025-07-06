@@ -30,6 +30,8 @@ InitPlayer::
     ld [wPlayerJumpSpeed], a
     ld a, 8
     ld [wPlayerMaxJumpSpeed], a
+    ld a, 15
+    ld [wPlayerMaxJumpDuration], a
     ld a, 4
     ld [wPlayerGravity], a
     ld a, 1
@@ -141,6 +143,11 @@ PlayerIdle:
     ld [wPlayerSpeed], a
     ld [wPlayerIsWalking], a
     ld [wPlayerIsJumping], a
+
+    ld a, [wCurrentPlayerState]
+    cp 2
+    jp z, EndMovePlayer
+
     ld [wCurrentPlayerState], a
 
     jp EndMovePlayer
@@ -211,6 +218,10 @@ PlayerJump:
     ld a, [wCurKeys]
     and a, PADF_A
     jp z, PlayerNotJumping
+    
+    ld a, [wPlayerMaxJumpDuration]
+    cp 0
+    jp z, PlayerNotJumping
 
     ld a, [wPlayerMaxJumpSpeed]
     ld [wPlayerJumpSpeed], a
@@ -220,6 +231,10 @@ PlayerJump:
 
     ld a, 1
     ld [wPlayerIsJumping], a
+
+    ld a, [wPlayerMaxJumpDuration]
+    dec a
+    ld [wPlayerMaxJumpDuration], a
     
     jp EndPlayerJump
 
@@ -227,7 +242,7 @@ PlayerJump:
 PlayerNotJumping:
     ld a, 0
     ld [wPlayerJumpSpeed], a
-    ld [wPlayerIsJumping], a
+    ;ld [wPlayerIsJumping], a
 
 
 EndPlayerJump:
@@ -334,20 +349,37 @@ EndUpdatePlayerAnimations:
 IdleAnimation:
     ld a, [wPlayerSpeed]
     cp 0
-    jp nz, IdleAnimationEnd
+    ret nz
+    
+    ld a, [wMetaSpriteFlipped]
+    cp 0
+    jp nz, EndSwapIdleRight
 
-    ld a, $00
+    SwapIdleRight:
+        ld a, $00
 
-    ld [_OAMRAM + 2], a
+        ld [_OAMRAM + 2], a
 
-    inc a
-    inc a
+        inc a
+        inc a
 
-    ld [_OAMRAM + 6], a
+        ld [_OAMRAM + 6], a
+    EndSwapIdleRight:
 
+    ld a, [wMetaSpriteFlipped]
+    cp 1
+    ret nz
 
-IdleAnimationEnd:
+    SwapIdleLeft:
+        ld a, $00
 
+        ld [_OAMRAM + 6], a
+
+        inc a
+        inc a
+
+        ld [_OAMRAM + 2], a
+    EndSwapIdleLeft:
 
     ret
 
@@ -355,41 +387,85 @@ IdleAnimationEnd:
 JumpingAnimation:
     ld a, [wPlayerJumpSpeed]
     cp 0
-    jp z, JumpingAnimationEnd
+    ret z
+    
+    ld a, [wMetaSpriteFlipped]
+    cp 0
+    jp nz, EndSwapJumpingRight
 
-    ld a, $0C
+    SwapJumpingRight:
+        ld a, $0C
 
-    ld [_OAMRAM + 2], a
+        ld [_OAMRAM + 2], a
 
-    inc a
-    inc a
+        inc a
+        inc a
 
-    ld [_OAMRAM + 6], a
+        ld [_OAMRAM + 6], a
+    EndSwapJumpingRight:
 
+    ld a, [wMetaSpriteFlipped]
+    cp 1
+    ret nz
 
-JumpingAnimationEnd:
+    SwapJumpingLeft:
+        ld a, $0C
 
+        ld [_OAMRAM + 6], a
 
+        inc a
+        inc a
+
+        ld [_OAMRAM + 2], a
+    EndSwapJumpingLeft:
+    
     ret
-
 
 WalkingAnimation:
     ; Safety check to prevent animation frame from going over animation tile indexes
     ld a, [wCurrentAnimationFrame]
     call CheckWalkingFrames 
     
-    ld b, a
+    
+    ld a, [wMetaSpriteFlipped]
+    cp 0
+    jp nz, EndSwapWalkingRight
 
-    ld hl, wWalkingFrames
-    ld a, [hl]
-    add a, b
+    SwapWalkingRight:
+        ld a, [wCurrentAnimationFrame]
+        ld b, a
 
-    ld [_OAMRAM + 2], a
+        ld hl, wWalkingFrames
+        ld a, [hl]
+        add a, b
 
-    inc a
-    inc a
+        ld [_OAMRAM + 2], a
 
-    ld [_OAMRAM + 6], a
+        inc a
+        inc a
+
+        ld [_OAMRAM + 6], a
+    EndSwapWalkingRight:
+    
+    ld a, [wMetaSpriteFlipped]
+    cp 1
+    jp nz, EndSwapWalkingLeft
+
+    SwapWalkingLeft:
+        ld a, [wCurrentAnimationFrame]
+        ld b, a
+
+        ld hl, wWalkingFrames
+        ld a, [hl]
+        add a, b
+
+        ld [_OAMRAM + 6], a
+
+        inc a
+        inc a
+        
+        ld [_OAMRAM + 2], a
+    EndSwapWalkingLeft:
     
     ld a, [wWalkingAnimationDelay]
     cp 0
@@ -448,30 +524,18 @@ ResetWalkingAnimation:
 
 SwapMetaSprite:
     ld a, [wPlayerDirection]
-    cp 0
+    cp 1
     jp z, .swapRight
 
-    cp 1
+    cp 0
     jp z, .swapLeft
 
     jp EndSwapMetaSprite
 
 .swapLeft:
     ld a, [wMetaSpriteFlipped]
-    cp 0
+    cp 1
     jp z, EndSwapMetaSprite
-
-    ld a, [_OAMRAM + 2]
-    ld b, a
-
-    ld a, [_OAMRAM + 6]
-    ld c, a
-
-    ld a, b
-    ld [_OAMRAM + 6], a
-
-    ld a, c
-    ld [_OAMRAM + 2], a
 
     ld a, 1
     ld [wMetaSpriteFlipped], a
@@ -480,20 +544,8 @@ SwapMetaSprite:
 
 .swapRight:
     ld a, [wMetaSpriteFlipped]
-    cp 1
+    cp 0
     jp z, EndSwapMetaSprite
-
-    ld a, [_OAMRAM + 6]
-    ld b, a
-    
-    ld a, [_OAMRAM + 2]
-    ld c, a
-
-    ld a, b
-    ld [_OAMRAM + 2], a
-
-    ld a, c
-    ld [_OAMRAM + 6], a
     
     ld a, 0
     ld [wMetaSpriteFlipped], a
@@ -606,6 +658,15 @@ CollideWithFloor:
 
     ld a, 0
     ld [wPlayerIsJumping], a
+    
+    ld a, [wPlayerMaxJumpDuration]
+    cp 0
+    jp nz, EndResetJumpDuration
+
+    ResetJumpDuration:
+        ld a, 15
+        ld [wPlayerMaxJumpDuration], a
+    EndResetJumpDuration:
 
     jp CheckFloorCollisionEnd
 
@@ -660,6 +721,7 @@ wPlayerAcceleration: db
 wPlayerMaxSpeed: db
 wPlayerJumpSpeed: db
 wPlayerMaxJumpSpeed: db
+wPlayerMaxJumpDuration: db
 wPlayerGravity: db
 wPlayerDirection: db
 wCurrentAnimationFrame: db
