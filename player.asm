@@ -126,7 +126,8 @@ CheckMaxVelocity:
     cp a, [hl]
 
     jp z, LimitVelocity
-    jp c, EndMovePlayer
+    ret c
+
     jp LimitVelocity
 
 
@@ -135,7 +136,7 @@ LimitVelocity:
     ld a, [hl]
     ld [wPlayerSpeed], a
 
-    jp EndMovePlayer
+    ret
 
 
 PlayerIdle:
@@ -146,15 +147,9 @@ PlayerIdle:
 
     ld a, [wCurrentPlayerState]
     cp 2
-    jp z, EndMovePlayer
+    ret z
 
     ld [wCurrentPlayerState], a
-
-    jp EndMovePlayer
-
-
-EndMovePlayer:
-
 
     ret
 
@@ -177,7 +172,7 @@ UpdatePlayerPosition:
 
     ; Preventing player from moving outside the left boundary of the screen
     cp a, 7
-    jp z, EndUpdatePlayerPosition
+    ret z
 
     sub a, b
     ld [_OAMRAM + 1], a
@@ -186,7 +181,7 @@ UpdatePlayerPosition:
     sub a, b
     ld [_OAMRAM + 5], a
 
-    jp EndUpdatePlayerPosition
+    ret
 
 .updateRight:
     ; Increase sprite X coordinate based on current speed
@@ -197,7 +192,7 @@ UpdatePlayerPosition:
     ld a, [_OAMRAM + 5]
     dec a
     cp a, 160
-    jp nc, EndUpdatePlayerPosition
+    ret nc
 
     ld a, [_OAMRAM + 1]
     add a, b
@@ -206,10 +201,6 @@ UpdatePlayerPosition:
     ld a, [_OAMRAM + 5]
     add a, b
     ld [_OAMRAM + 5], a
-
-
-EndUpdatePlayerPosition:
-
 
     ret
 
@@ -236,17 +227,12 @@ PlayerJump:
     dec a
     ld [wPlayerMaxJumpDuration], a
     
-    jp EndPlayerJump
+    ret
 
 
 PlayerNotJumping:
     ld a, 0
     ld [wPlayerJumpSpeed], a
-    ;ld [wPlayerIsJumping], a
-
-
-EndPlayerJump:
-
 
     ret
 
@@ -276,10 +262,6 @@ UpdatePlayerGravity:
     add a, b
     ld [_OAMRAM + 4], a
 
-
-EndUpdatePlayerGravity:
-
-
     ret
 
 
@@ -293,6 +275,8 @@ SetPlayerAnimationState:
     jp z, .setToWalking
 
     jp .setToIdle
+
+    ret
 
 .setToIdle:
     ld a, [wCurrentPlayerState]
@@ -338,10 +322,6 @@ UpdatePlayerAnimations:
     
     call FlipPlayerSprite
     call SwapMetaSprite
-
-
-EndUpdatePlayerAnimations:
-
 
     ret
 
@@ -421,6 +401,7 @@ JumpingAnimation:
     
     ret
 
+
 WalkingAnimation:
     ; Safety check to prevent animation frame from going over animation tile indexes
     ld a, [wCurrentAnimationFrame]
@@ -480,19 +461,12 @@ WalkingAnimation:
     dec a
     ld [wWalkingAnimationDelay], a
 
-WalkingAnimationEnd:
-
-
     ret
 
 
 CheckWalkingFrames:
     cp a, 8
     call nc, ResetWalkingAnimation
-
-
-EndCheckWalkingFrames:
-
 
     ret
 
@@ -507,17 +481,12 @@ IncreasAnimationFrameCounter:
     
     ld [wCurrentAnimationFrame], a
 
-
-IncreasAnimationFrameCounterEnd:
-
-
     ret
 
 
 ResetWalkingAnimation:
     ld a, 0
     ld [wCurrentAnimationFrame], a
-
 
     ret
 
@@ -530,28 +499,25 @@ SwapMetaSprite:
     cp 0
     jp z, .swapLeft
 
-    jp EndSwapMetaSprite
+    ret
 
 .swapLeft:
     ld a, [wMetaSpriteFlipped]
     cp 1
-    jp z, EndSwapMetaSprite
+    ret z
 
     ld a, 1
     ld [wMetaSpriteFlipped], a
 
-    jp EndSwapMetaSprite
+    ret
 
 .swapRight:
     ld a, [wMetaSpriteFlipped]
     cp 0
-    jp z, EndSwapMetaSprite
+    ret z
     
     ld a, 0
     ld [wMetaSpriteFlipped], a
-
-EndSwapMetaSprite:
-    
 
     ret
 
@@ -563,10 +529,6 @@ FlipPlayerSprite:
 
     cp a, 1
     call z, FacingRight
-
-
-EndFlipPlayerSprite:
-
 
     ret
 
@@ -644,7 +606,7 @@ CheckFloorCollision:
 
     jp z, CollideWithFloor
 
-    jp CheckFloorCollisionEnd
+    ret
 
 
 CollideWithFloor:
@@ -668,22 +630,12 @@ CollideWithFloor:
         ld [wPlayerMaxJumpDuration], a
     EndResetJumpDuration:
 
-    jp CheckFloorCollisionEnd
-
-
-CheckFloorCollisionEnd:
-
-
     ret
 
 
 CollideWithScreenBoundary:
     ld a, [_OAMRAM + 1]
     sub a, 1
-
-
-CollideWithScreenBoundaryEnd:
-
 
     ret
 
