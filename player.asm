@@ -22,7 +22,7 @@ InitPlayer::
     
     ld a, 0
     ld [wPlayerSpeed], a
-    ld a, 3
+    ld a, 5
     ld [wPlayerMaxSpeed], a
     ld a, 1
     ld [wPlayerAcceleration], a
@@ -155,8 +155,6 @@ PlayerIdle:
 
 
 UpdatePlayerPosition:
-    ld a, [wPlayerSpeed]
-    
     ld a, [wPlayerDirection]
     cp a, 0 ; Player is moving left
     jp z, .updateLeft 
@@ -167,11 +165,15 @@ UpdatePlayerPosition:
 .updateLeft:
     ; Decrease sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
+
+    ; dividing by power of 2 (sub pixel calculation)
+    srl a
+
     ld b, a
     ld a, [_OAMRAM + 1]
 
     ; Preventing player from moving outside the left boundary of the screen
-    cp a, 7
+    cp a, 8
     ret z
 
     sub a, b
@@ -186,6 +188,9 @@ UpdatePlayerPosition:
 .updateRight:
     ; Increase sprite X coordinate based on current speed
     ld a, [wPlayerSpeed]
+
+    ; dividing by power of 2 (sub pixel calculation)
+    srl a
     ld b, a
     
     ; Preventing player from moving outside the right boundary of the screen
@@ -240,6 +245,9 @@ PlayerNotJumping:
 UpdatePlayerGravity:
     ; Apply jump velocity
     ld a, [wPlayerJumpSpeed]
+
+    ; dividing by power of 2 (sub pixel calculation)
+    srl a
     ld b, a
     ld a, [_OAMRAM]
 
@@ -252,6 +260,9 @@ UpdatePlayerGravity:
 
     ; Apply gravity
     ld a, [wPlayerGravity]
+
+    ; dividing by power of 2 (sub pixel calculation)
+    srl a
     ld b, a
     ld a, [_OAMRAM]
 
@@ -611,11 +622,11 @@ CheckFloorCollision:
 
 CollideWithFloor:
     ld a, [_OAMRAM]
-    sub a, 4
+    sub a, 2
     ld [_OAMRAM], a
 
     ld a, [_OAMRAM + 4]
-    sub a, 4
+    sub a, 2
     ld [_OAMRAM + 4], a
 
     ld a, 0
@@ -629,13 +640,6 @@ CollideWithFloor:
         ld a, 15
         ld [wPlayerMaxJumpDuration], a
     EndResetJumpDuration:
-
-    ret
-
-
-CollideWithScreenBoundary:
-    ld a, [_OAMRAM + 1]
-    sub a, 1
 
     ret
 
