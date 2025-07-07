@@ -30,6 +30,8 @@ InitPlayer::
     ld [wPlayerJumpSpeed], a
     ld a, 8
     ld [wPlayerMaxJumpSpeed], a
+    ld a, 4
+    ld [wPlayerJumpAcceleration], a
     ld a, 15
     ld [wPlayerMaxJumpDuration], a
     ld a, 4
@@ -174,7 +176,18 @@ UpdatePlayerPosition:
 
     ; Preventing player from moving outside the left boundary of the screen
     cp a, 8
-    ret z
+    jp nc, .endCollideWithBoundary
+
+    .collideWithBoundary:
+        ld a, 7
+        ld [_OAMRAM + 1], a
+        
+        ld a, [_OAMRAM + 1]
+        add a, 7
+        ld [_OAMRAM + 5], a
+
+        ret
+    .endCollideWithBoundary:
 
     sub a, b
     ld [_OAMRAM + 1], a
@@ -220,6 +233,18 @@ PlayerJump:
     jp z, PlayerNotJumping
 
     ld a, [wPlayerMaxJumpSpeed]
+    ld b, a
+    ld a, [wPlayerJumpSpeed]
+    ld hl, wPlayerJumpAcceleration
+
+    add a, [hl]
+    cp a, b
+    jp c, EndLimitJumpVelocity
+
+    LimitJumpVelocity:
+        ld a, b
+    EndLimitJumpVelocity:
+
     ld [wPlayerJumpSpeed], a
 
     ld a, 2
@@ -633,13 +658,9 @@ CollideWithFloor:
     ld [wPlayerIsJumping], a
     
     ld a, [wPlayerMaxJumpDuration]
-    cp 0
-    jp nz, EndResetJumpDuration
 
-    ResetJumpDuration:
-        ld a, 15
-        ld [wPlayerMaxJumpDuration], a
-    EndResetJumpDuration:
+    ld a, 15
+    ld [wPlayerMaxJumpDuration], a
 
     ret
 
@@ -676,6 +697,7 @@ wPlayerSpeed: db
 wPlayerAcceleration: db
 wPlayerMaxSpeed: db
 wPlayerJumpSpeed: db
+wPlayerJumpAcceleration: db
 wPlayerMaxJumpSpeed: db
 wPlayerMaxJumpDuration: db
 wPlayerGravity: db
