@@ -15,7 +15,7 @@ EntryPoint:
     call WaitVBlank
 
     ; Turning off LCD
-    ld a, 0
+    xor a
     ld [rLCDC], a
     
     ; Copying level data into VRAM
@@ -32,7 +32,7 @@ EntryPoint:
     call LoadPlayerSprite
 
     ; Clearing OAM
-    ld a, 0
+    xor a
     ld b, 160
     ld hl, _OAMRAM
     Call ClearOAM
@@ -42,7 +42,7 @@ EntryPoint:
     call InitPlayer
 
     ; Initializing global variables
-    ld a, 0
+    xor a
     ld [wFrameCounter], a
 
     ; Turning LCD on
@@ -92,11 +92,6 @@ Main:
     ld [wFrameCounter], a
     cp a, 1
     jp nz, Main
-
-    ; Set frame counter back to zero
-    ;ld a, 0
-    ;ld [wFrameCounter], a
-    ;call UpdatePlayer
 
     jp Main
 

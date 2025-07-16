@@ -7,7 +7,7 @@ InitPlayer::
     ld [hli], a
     ld a, 16 ; Writing X coordinates for metasprite 0
     ld [hli], a
-    ld a, 0 ; Object ID and attributes for metasprite 0 
+    xor a ; Object ID and attributes for metasprite 0 
     ld [hli], a
     ld [hli], a
 
@@ -17,28 +17,27 @@ InitPlayer::
     ld [hli], a ; Writing X coordinates for metasprite 1
     ld a, 2 ; Object ID and attributes for metasprite 1
     ld [hli], a
-    ld a, 0
+    xor a
     ld [hli], a
     
-    ld a, 0
     ld [wPlayerSpeed], a
     ld a, 5
     ld [wPlayerMaxSpeed], a
     ld a, 1
     ld [wPlayerAcceleration], a
-    ld a, 0
+    xor a
     ld [wPlayerJumpSpeed], a
-    ld a, 8
+    ld a, 12
     ld [wPlayerMaxJumpSpeed], a
-    ld a, 4
+    ld a, 3
     ld [wPlayerJumpAcceleration], a
-    ld a, 15
+    ld a, 6
     ld [wPlayerMaxJumpDuration], a
-    ld a, 4
+    ld a, 6
     ld [wPlayerGravity], a
     ld a, 1
     ld [wPlayerDirection], a
-    ld a, 0
+    xor a
     ld [wCurrentAnimationFrame], a 
     ld [wPlayerIsWalking], a
     ld [wPlayerIsJumping], a
@@ -91,7 +90,7 @@ AccelerateLeft:
     ld a, 1
     ld [wCurrentPlayerState], a
     
-    ld a, 0
+    xor a
     ld [wPlayerDirection], a
 
     ld a, 1
@@ -142,7 +141,7 @@ LimitVelocity:
 
 
 PlayerIdle:
-    ld a, 0
+    xor a
     ld [wPlayerSpeed], a
     ld [wPlayerIsWalking], a
     ld [wPlayerIsJumping], a
@@ -261,7 +260,7 @@ PlayerJump:
 
 
 PlayerNotJumping:
-    ld a, 0
+    xor a
     ld [wPlayerJumpSpeed], a
 
     ret
@@ -319,7 +318,7 @@ SetPlayerAnimationState:
     cp 0
     ret z
 
-    ld a, 0
+    xor a
     ld [wCurrentPlayerState], a
 
     ret
@@ -521,7 +520,7 @@ IncreasAnimationFrameCounter:
 
 
 ResetWalkingAnimation:
-    ld a, 0
+    xor a
     ld [wCurrentAnimationFrame], a
 
     ret
@@ -552,7 +551,7 @@ SwapMetaSprite:
     cp 0
     ret z
     
-    ld a, 0
+    xor a
     ld [wMetaSpriteFlipped], a
 
     ret
@@ -646,15 +645,19 @@ CheckFloorCollision:
 
 
 CollideWithFloor:
+    ld a, [wPlayerGravity]
+    srl a
+    ld b, a
+
     ld a, [_OAMRAM]
-    sub a, 2
+    sub a, b
     ld [_OAMRAM], a
 
     ld a, [_OAMRAM + 4]
-    sub a, 2
+    sub a, b
     ld [_OAMRAM + 4], a
 
-    ld a, 0
+    xor a
     ld [wPlayerIsJumping], a
     
     ld a, [wPlayerMaxJumpDuration]
