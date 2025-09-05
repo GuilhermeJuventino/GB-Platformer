@@ -449,11 +449,12 @@ WalkingAnimation:
 
     SwapWalkingRight:
         ld a, [wCurrentAnimationFrame]
-        ld b, a
 
         ld hl, wWalkingFrames
+
+        add l
+        ld l, a
         ld a, [hl]
-        add a, b
 
         ld [_OAMRAM + 2], a
 
@@ -469,11 +470,12 @@ WalkingAnimation:
 
     SwapWalkingLeft:
         ld a, [wCurrentAnimationFrame]
-        ld b, a
 
         ld hl, wWalkingFrames
+
+        add l
+        ld l, a
         ld a, [hl]
-        add a, b
 
         ld [_OAMRAM + 6], a
 
@@ -500,18 +502,15 @@ WalkingAnimation:
 
 
 CheckWalkingFrames:
-    cp a, 8
+    cp a, 2
     call nc, ResetWalkingAnimation
 
     ret
 
 
 IncreasAnimationFrameCounter:
-    ; Increasing animation counter by 4
+    ; Increasing animation counter by 1
     ld a, [wCurrentAnimationFrame]
-    inc a
-    inc a
-    inc a
     inc a
     
     ld [wCurrentAnimationFrame], a
